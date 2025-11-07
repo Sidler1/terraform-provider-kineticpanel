@@ -24,14 +24,10 @@ builds:
     goarch:
       - amd64
       - '386'
-      - arm
-      - arm64
     ignore:
       - goos: darwin
         goarch: '386'
     binary: '{{ .ProjectName }}_v{{ .Version }}'
-  - main: ./
-    no_main_check: true
 archives:
   - format: zip
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
@@ -60,4 +56,4 @@ release:
   # If you want to manually examine the release before its live, uncomment this line:
   # draft: true
 changelog:
-  disable: true
+  disable: false
