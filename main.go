@@ -19,7 +19,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address:         "registry.terraform.io/sidler2/kineticpanel",
+		Address:         "registry.terraform.io/Sidler1/kineticpanel",
 		ProtocolVersion: 6,
 		Debug:           debug,
 	}
