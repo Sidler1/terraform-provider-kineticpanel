@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -31,6 +32,10 @@ func NewServerReinstallResource() resource.Resource {
 
 func (r *ServerReinstallResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_server_reinstall"
+}
+
+func (r *ServerReinstallResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("server_id"), req, resp)
 }
 
 func (r *ServerReinstallResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -81,13 +86,13 @@ func (r *ServerReinstallResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	path := "/servers/" + plan.ServerID.ValueString() + "/settings/reinstall"
+	pth := "/servers/" + plan.ServerID.ValueString() + "/settings/reinstall"
 	payload := map[string]bool{}
 	if !plan.Force.IsNull() {
 		payload["force"] = plan.Force.ValueBool()
 	}
 
-	_, err := r.client.Post(path, payload)
+	_, err := r.client.Post(pth, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to trigger reinstall", err.Error())
 		return
@@ -115,13 +120,13 @@ func (r *ServerReinstallResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	// Reinstall again if force changes or re-applied
-	path := "/servers/" + plan.ServerID.ValueString() + "/settings/reinstall"
+	pth := "/servers/" + plan.ServerID.ValueString() + "/settings/reinstall"
 	payload := map[string]bool{}
 	if !plan.Force.IsNull() {
 		payload["force"] = plan.Force.ValueBool()
 	}
 
-	_, err := r.client.Post(path, payload)
+	_, err := r.client.Post(pth, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update reinstall", err.Error())
 		return

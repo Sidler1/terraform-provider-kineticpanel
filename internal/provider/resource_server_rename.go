@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -32,6 +33,10 @@ func NewServerRenameResource() resource.Resource {
 
 func (r *ServerRenameResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_server_rename"
+}
+
+func (r *ServerRenameResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("server_id"), req, resp)
 }
 
 func (r *ServerRenameResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -86,7 +91,7 @@ func (r *ServerRenameResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	path := "/servers/" + plan.ServerID.ValueString() + "/settings/rename"
+	pth := "/servers/" + plan.ServerID.ValueString() + "/settings/rename"
 	payload := map[string]string{
 		"name": plan.Name.ValueString(),
 	}
@@ -94,7 +99,7 @@ func (r *ServerRenameResource) Create(ctx context.Context, req resource.CreateRe
 		payload["description"] = plan.Description.ValueString()
 	}
 
-	_, err := r.client.Post(path, payload)
+	_, err := r.client.Post(pth, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to rename server", err.Error())
 		return
@@ -121,7 +126,7 @@ func (r *ServerRenameResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	path := "/servers/" + plan.ServerID.ValueString() + "/settings/rename"
+	pth := "/servers/" + plan.ServerID.ValueString() + "/settings/rename"
 	payload := map[string]string{
 		"name": plan.Name.ValueString(),
 	}
@@ -129,7 +134,7 @@ func (r *ServerRenameResource) Update(ctx context.Context, req resource.UpdateRe
 		payload["description"] = plan.Description.ValueString()
 	}
 
-	_, err := r.client.Post(path, payload)
+	_, err := r.client.Post(pth, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update server name", err.Error())
 		return

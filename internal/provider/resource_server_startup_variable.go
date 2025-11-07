@@ -3,7 +3,9 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -32,6 +34,17 @@ func NewServerStartupVariableResource() resource.Resource {
 
 func (r *ServerStartupVariableResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_server_startup_variable"
+}
+
+func (r *ServerStartupVariableResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	parts := strings.Split(req.ID, ":")
+	if len(parts) != 2 {
+		resp.Diagnostics.AddError("Invalid Import ID", "Expected format: <server_id>:<key>")
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("server_id"), parts[0])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("key"), parts[1])...)
 }
 
 func (r *ServerStartupVariableResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -89,13 +102,13 @@ func (r *ServerStartupVariableResource) Create(ctx context.Context, req resource
 		return
 	}
 
-	path := "/servers/" + plan.ServerID.ValueString() + "/startup/variable"
+	pth := "/servers/" + plan.ServerID.ValueString() + "/startup/variable"
 	payload := map[string]string{
 		"key":   plan.Key.ValueString(),
 		"value": plan.Value.ValueString(),
 	}
 
-	_, err := r.client.Post(path, payload)
+	_, err := r.client.Post(pth, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update startup variable", err.Error())
 		return
@@ -122,13 +135,13 @@ func (r *ServerStartupVariableResource) Update(ctx context.Context, req resource
 		return
 	}
 
-	path := "/servers/" + plan.ServerID.ValueString() + "/startup/variable"
+	pth := "/servers/" + plan.ServerID.ValueString() + "/startup/variable"
 	payload := map[string]string{
 		"key":   plan.Key.ValueString(),
 		"value": plan.Value.ValueString(),
 	}
 
-	_, err := r.client.Post(path, payload)
+	_, err := r.client.Post(pth, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update startup variable", err.Error())
 		return

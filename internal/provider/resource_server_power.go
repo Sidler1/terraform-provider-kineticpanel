@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -30,6 +31,10 @@ func NewServerPowerResource() resource.Resource {
 
 func (r *ServerPowerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_server_power"
+}
+
+func (r *ServerPowerResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("server_id"), req, resp)
 }
 
 func (r *ServerPowerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -79,8 +84,8 @@ func (r *ServerPowerResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	path := "/servers/" + plan.ServerID.ValueString() + "/power"
-	_, err := r.client.Post(path, map[string]string{"signal": plan.Signal.ValueString()})
+	pth := "/servers/" + plan.ServerID.ValueString() + "/power"
+	_, err := r.client.Post(pth, map[string]string{"signal": plan.Signal.ValueString()})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to send power signal", err.Error())
 		return
@@ -103,8 +108,8 @@ func (r *ServerPowerResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	path := "/servers/" + plan.ServerID.ValueString() + "/power"
-	_, err := r.client.Post(path, map[string]string{"signal": plan.Signal.ValueString()})
+	pth := "/servers/" + plan.ServerID.ValueString() + "/power"
+	_, err := r.client.Post(pth, map[string]string{"signal": plan.Signal.ValueString()})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update power signal", err.Error())
 		return

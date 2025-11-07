@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -33,6 +34,10 @@ func NewServerCommandResource() resource.Resource {
 // Metadata sets the Terraform type name.
 func (r *ServerCommandResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_server_command"
+}
+
+func (r *ServerCommandResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("server_id"), req, resp)
 }
 
 // Schema defines the resource attributes.
@@ -86,10 +91,10 @@ func (r *ServerCommandResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
-	path := "/servers/" + plan.ServerID.ValueString() + "/command"
+	pth := "/servers/" + plan.ServerID.ValueString() + "/command"
 	payload := map[string]string{"command": plan.Command.ValueString()}
 
-	_, err := r.client.Post(path, payload)
+	_, err := r.client.Post(pth, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to send command", err.Error())
 		return
@@ -117,10 +122,10 @@ func (r *ServerCommandResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
-	path := "/servers/" + plan.ServerID.ValueString() + "/command"
+	pth := "/servers/" + plan.ServerID.ValueString() + "/command"
 	payload := map[string]string{"command": plan.Command.ValueString()}
 
-	_, err := r.client.Post(path, payload)
+	_, err := r.client.Post(pth, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update command", err.Error())
 		return

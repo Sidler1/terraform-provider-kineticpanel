@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -31,6 +32,10 @@ func NewServerDockerImageResource() resource.Resource {
 
 func (r *ServerDockerImageResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_server_docker_image"
+}
+
+func (r *ServerDockerImageResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("server_id"), req, resp)
 }
 
 func (r *ServerDockerImageResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -81,12 +86,12 @@ func (r *ServerDockerImageResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	path := "/servers/" + plan.ServerID.ValueString() + "/settings/docker-image"
+	pth := "/servers/" + plan.ServerID.ValueString() + "/settings/docker-image"
 	payload := map[string]string{
 		"docker_image": plan.DockerImage.ValueString(),
 	}
 
-	_, err := r.client.Post(path, payload)
+	_, err := r.client.Post(pth, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update Docker image", err.Error())
 		return
@@ -113,12 +118,12 @@ func (r *ServerDockerImageResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	path := "/servers/" + plan.ServerID.ValueString() + "/settings/docker-image"
+	pth := "/servers/" + plan.ServerID.ValueString() + "/settings/docker-image"
 	payload := map[string]string{
 		"docker_image": plan.DockerImage.ValueString(),
 	}
 
-	_, err := r.client.Post(path, payload)
+	_, err := r.client.Post(pth, payload)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update Docker image", err.Error())
 		return
