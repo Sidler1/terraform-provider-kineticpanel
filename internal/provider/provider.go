@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -30,20 +31,20 @@ func (p *KineticpanelProvider) Metadata(_ context.Context, _ provider.MetadataRe
 
 func (p *KineticpanelProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Terraform provider for Kinetic Panel (Pterodactyl-compatible). Optimized for https://kineticpanel.net",
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
-				Required:    false,
 				Optional:    true,
-				Description: "Base URL of your Kinetic Panel instance (include https://, no trailing slash). Example: https://kineticpanel.net",
+				Description: "Base URL of the panel. Defaults to `https://kineticpanel.net` if not set. Using other hosts may not work reliably.",
 			},
 			"api_key": schema.StringAttribute{
 				Required:    true,
 				Sensitive:   true,
-				Description: "Pterodactyl API key (Application key for creating servers, Client key for managing existing ones).",
+				Description: "Client or Application API key.",
 			},
 			"use_application": schema.BoolAttribute{
 				Optional:    true,
-				Description: "Set to false to use Client API instead of Application API. Default: true",
+				Description: "Use Application API (admin tasks, e.g. creating servers). Default: true. Set false for Client API.",
 			},
 		},
 	}
@@ -57,11 +58,22 @@ func (p *KineticpanelProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	// Allow env overrides
 	host := config.Host.ValueString()
+	if host == "" {
+		host = os.Getenv("KINETICPANEL_HOST")
+	}
 	if host == "" {
 		host = "https://kineticpanel.net"
 	}
+
+	// Warning for non-standard hosts
+	if config.Host.ValueString() != "" && !strings.EqualFold(strings.TrimRight(config.Host.ValueString(), "/"), "https://kineticpanel.net") {
+		resp.Diagnostics.AddWarning(
+			"Non-standard host",
+			"This provider is optimized for https://kineticpanel.net. Other Pterodactyl instances may have compatibility issues.",
+		)
+	}
+
 	apiKey := config.APIKey.ValueString()
 	if apiKey == "" {
 		apiKey = os.Getenv("KINETICPANEL_API_KEY")
@@ -73,7 +85,7 @@ func (p *KineticpanelProvider) Configure(ctx context.Context, req provider.Confi
 	}
 
 	if apiKey == "" {
-		resp.Diagnostics.AddError("Missing configuration", "api_key is required")
+		resp.Diagnostics.AddError("Missing configuration", "host and api_key are required")
 		return
 	}
 
@@ -85,11 +97,22 @@ func (p *KineticpanelProvider) Configure(ctx context.Context, req provider.Confi
 func (p *KineticpanelProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewServerResource,
+		NewServerPowerResource,
+		NewServerCommandResource,
+		NewServerRenameResource,
+		NewServerReinstallResource,
+		NewServerDockerImageResource,
+		NewServerStartupVariableResource,
 	}
 }
 
 func (p *KineticpanelProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return nil
+	return []func() datasource.DataSource{
+		NewServerDataSource,
+		NewServerUtilizationDataSource,
+		NewServerStartupDataSource,
+		NewServerActivityLogsDataSource,
+	}
 }
 
 func New(version string) func() provider.Provider {

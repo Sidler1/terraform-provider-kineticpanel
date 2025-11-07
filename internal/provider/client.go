@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,7 +31,7 @@ func NewClient(host, apiKey string, isApplication bool) *Client {
 	}
 }
 
-func (c *Client) DoRequest(method, path string, body io.Reader) ([]byte, error) {
+func (c *Client) request(method, path string, body io.Reader) ([]byte, error) {
 	url := fmt.Sprintf("%s%s", c.BaseURL, path)
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
@@ -37,8 +39,10 @@ func (c *Client) DoRequest(method, path string, body io.Reader) ([]byte, error) 
 	}
 
 	req.Header.Set("Authorization", "Bearer "+c.APIKey)
-	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -46,9 +50,51 @@ func (c *Client) DoRequest(method, path string, body io.Reader) ([]byte, error) 
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, _ := io.ReadAll(resp.Body)
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("API error %d: %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("API error %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	return io.ReadAll(resp.Body)
+	return bodyBytes, nil
+}
+
+func (c *Client) Get(path string) ([]byte, error) {
+	return c.request("GET", path, nil)
+}
+
+func (c *Client) Post(path string, payload any) ([]byte, error) {
+	var body io.Reader
+	if payload != nil {
+		jsonData, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+		body = bytes.NewBuffer(jsonData)
+	}
+	return c.request("POST", path, body)
+}
+
+func (c *Client) Put(path string, payload any) ([]byte, error) {
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	return c.request("PUT", path, bytes.NewBuffer(jsonData))
+}
+func (c *Client) Patch(path string, payload any) ([]byte, error) {
+	var body io.Reader
+	if payload != nil {
+		jsonData, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+		body = bytes.NewBuffer(jsonData)
+	}
+	return c.request("PATCH", path, body)
+}
+
+func (c *Client) Delete(path string) error {
+	_, err := c.request("DELETE", path, nil)
+	return err
 }
