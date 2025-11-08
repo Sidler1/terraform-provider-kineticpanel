@@ -20,7 +20,9 @@ type ServerDataSource struct {
 // serverDataModel represents the data source schema.
 type serverDataModel struct {
 	ServerID       types.String `tfsdk:"server_id"`
-	ID             types.String `tfsdk:"id"` // same as server_id
+	ID             types.String `tfsdk:"id"`
+	Identifier     types.String `tfsdk:"identifier"`
+	InternalID     types.Int64  `tfsdk:"internal_id"`
 	Name           types.String `tfsdk:"name"`
 	UUID           types.String `tfsdk:"uuid"`
 	Description    types.String `tfsdk:"description"`
@@ -28,6 +30,7 @@ type serverDataModel struct {
 	Owner          types.Bool   `tfsdk:"owner"`
 	Node           types.String `tfsdk:"node"`
 	DockerImage    types.String `tfsdk:"docker_image"`
+	StartupCommand types.String `tfsdk:"invocation"`
 	Memory         types.Int64  `tfsdk:"memory"`
 	Disk           types.Int64  `tfsdk:"disk"`
 	CPU            types.Int64  `tfsdk:"cpu"`
@@ -160,11 +163,14 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	var apiResp struct {
 		Attributes struct {
-			Name        string `json:"name"`
-			UUID        string `json:"uuid"`
-			Description string `json:"description"`
-			Suspended   bool   `json:"suspended"`
-			Limits      struct {
+			Name           string `json:"name"`
+			UUID           string `json:"uuid"`
+			Description    string `json:"description"`
+			Suspended      bool   `json:"suspended"`
+			Identifier     string `json:"identifier"`
+			InternalID     int64  `json:"internal_id"`
+			StartupCommand string `json:"invocation"`
+			Limits         struct {
 				Memory int64 `json:"memory"`
 				Swap   int64 `json:"swap"`
 				Disk   int64 `json:"disk"`
@@ -214,7 +220,10 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		IO:             types.Int64Value(a.Limits.IO),
 		AllocationID:   types.Int64Value(a.Allocation.ID),
 		AllocationIP:   types.StringValue(a.Allocation.IP),
-		AllocationPort: types.Int64Value(int64(a.Allocation.Port)),
+		AllocationPort: types.Int64Value(a.Allocation.Port),
+		Identifier:     types.StringValue(a.Identifier),
+		InternalID:     types.Int64Value(a.InternalID),
+		StartupCommand: types.StringValue(a.StartupCommand),
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)

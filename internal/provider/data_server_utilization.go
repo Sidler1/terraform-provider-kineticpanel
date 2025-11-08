@@ -19,16 +19,16 @@ type ServerUtilizationDataSource struct {
 
 // utilizationModel holds the data source state.
 type utilizationModel struct {
-	ServerID  types.String  `tfsdk:"server_id"`
-	State     types.String  `tfsdk:"state"`        // running, offline, etc.
-	CPU       types.Float64 `tfsdk:"cpu_percent"`  // % of allocated CPU
-	Memory    types.Int64   `tfsdk:"memory_bytes"` // current usage
-	MemoryMB  types.Float64 `tfsdk:"memory_mb"`    // computed for convenience
-	Disk      types.Int64   `tfsdk:"disk_bytes"`
-	DiskMB    types.Float64 `tfsdk:"disk_mb"`
-	NetworkRX types.Int64   `tfsdk:"network_rx_bytes"`
-	NetworkTX types.Int64   `tfsdk:"network_tx_bytes"`
-	Uptime    types.Int64   `tfsdk:"uptime_seconds"`
+	ServerID  types.String `tfsdk:"server_id"`
+	State     types.String `tfsdk:"state"`        // running, offline, etc.
+	CPU       types.Int64  `tfsdk:"cpu_percent"`  // % of allocated CPU
+	Memory    types.Int64  `tfsdk:"memory_bytes"` // current usage
+	MemoryMB  types.Int64  `tfsdk:"memory_mb"`    // computed for convenience
+	Disk      types.Int64  `tfsdk:"disk_bytes"`
+	DiskMB    types.Int64  `tfsdk:"disk_mb"`
+	NetworkRX types.Int64  `tfsdk:"network_rx_bytes"`
+	NetworkTX types.Int64  `tfsdk:"network_tx_bytes"`
+	Uptime    types.Int64  `tfsdk:"uptime_seconds"`
 }
 
 func NewServerUtilizationDataSource() datasource.DataSource {
@@ -51,7 +51,7 @@ func (d *ServerUtilizationDataSource) Schema(_ context.Context, _ datasource.Sch
 				Computed:    true,
 				Description: "Current server state: `running`, `starting`, `stopping`, `offline`.",
 			},
-			"cpu_percent": schema.Float64Attribute{
+			"cpu_percent": schema.Int64Attribute{
 				Computed:    true,
 				Description: "Current CPU usage as percentage of allocated limit.",
 			},
@@ -59,7 +59,7 @@ func (d *ServerUtilizationDataSource) Schema(_ context.Context, _ datasource.Sch
 				Computed:    true,
 				Description: "Current memory usage in bytes.",
 			},
-			"memory_mb": schema.Float64Attribute{
+			"memory_mb": schema.Int64Attribute{
 				Computed:    true,
 				Description: "Current memory usage in MB (rounded to 2 decimals).",
 			},
@@ -67,7 +67,7 @@ func (d *ServerUtilizationDataSource) Schema(_ context.Context, _ datasource.Sch
 				Computed:    true,
 				Description: "Current disk usage in bytes.",
 			},
-			"disk_mb": schema.Float64Attribute{
+			"disk_mb": schema.Int64Attribute{
 				Computed:    true,
 				Description: "Current disk usage in MB (rounded to 2 decimals).",
 			},
@@ -138,30 +138,21 @@ func (d *ServerUtilizationDataSource) Read(ctx context.Context, req datasource.R
 	}
 
 	// Convert bytes to MB with 2 decimal precision
-	memoryMB := float64(apiResp.Memory) / (1024 * 1024)
-	diskMB := float64(apiResp.Disk) / (1024 * 1024)
+	memoryMB := apiResp.Memory / (1024 * 1024)
+	diskMB := apiResp.Disk / (1024 * 1024)
 
 	state := utilizationModel{
 		ServerID:  config.ServerID,
 		State:     types.StringValue(apiResp.State),
-		CPU:       types.Float64Value(float64(apiResp.CPU)),
+		CPU:       types.Int64Value(apiResp.CPU),
 		Memory:    types.Int64Value(apiResp.Memory),
-		MemoryMB:  types.Float64Value(roundTo(memoryMB, 2)),
+		MemoryMB:  types.Int64Value(memoryMB),
 		Disk:      types.Int64Value(apiResp.Disk),
-		DiskMB:    types.Float64Value(roundTo(diskMB, 2)),
+		DiskMB:    types.Int64Value(diskMB),
 		NetworkRX: types.Int64Value(apiResp.Network.RX),
 		NetworkTX: types.Int64Value(apiResp.Network.TX),
 		Uptime:    types.Int64Value(apiResp.Uptime),
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-}
-
-// roundTo rounds float64 to given decimal places
-func roundTo(n float64, decimals uint) float64 {
-	factor := 1.0
-	for i := uint(0); i < decimals; i++ {
-		factor *= 10
-	}
-	return float64(int64(n*factor+0.5)) / factor
 }
