@@ -118,9 +118,9 @@ func (d *ServersDataSource) Configure(_ context.Context, req datasource.Configur
 	d.client = client
 }
 
-func (d *ServersDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *ServersDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state serversDataModel
-	body, err := d.client.Get("")
+	body, err := d.client.Get("/servers/")
 	if err != nil {
 		resp.Diagnostics.AddError("API Error", err.Error())
 		return

@@ -95,7 +95,9 @@ func (c *Client) request(method, path string, body io.Reader) ([]byte, error) {
 	return respBody, nil
 }
 
-func (c *Client) Get(path string) ([]byte, error) { return c.request("GET", path, nil) }
+func (c *Client) Get(path string) ([]byte, error) {
+	return c.request("GET", path, nil)
+}
 func (c *Client) Post(path string, payload any) ([]byte, error) {
 	if payload == nil {
 		return c.request("POST", path, nil)
