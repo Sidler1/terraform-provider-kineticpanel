@@ -21,8 +21,6 @@ type ServerDataSource struct {
 type serverDataModel struct {
 	ServerID       types.String `tfsdk:"server_id"`
 	ID             types.String `tfsdk:"id"`
-	Identifier     types.String `tfsdk:"identifier"`
-	InternalID     types.Int64  `tfsdk:"internal_id"`
 	Name           types.String `tfsdk:"name"`
 	UUID           types.String `tfsdk:"uuid"`
 	Description    types.String `tfsdk:"description"`
@@ -30,7 +28,6 @@ type serverDataModel struct {
 	Owner          types.Bool   `tfsdk:"owner"`
 	Node           types.String `tfsdk:"node"`
 	DockerImage    types.String `tfsdk:"docker_image"`
-	StartupCommand types.String `tfsdk:"invocation"`
 	Memory         types.Int64  `tfsdk:"memory"`
 	Disk           types.Int64  `tfsdk:"disk"`
 	CPU            types.Int64  `tfsdk:"cpu"`
