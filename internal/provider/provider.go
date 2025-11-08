@@ -10,13 +10,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var _ provider.Provider = &KineticpanelProvider{}
 
-type KineticpanelProvider struct {
-	version string
-}
+type KineticpanelProvider struct{ version string }
 
 type kineticpanelProviderModel struct {
 	Host           types.String `tfsdk:"host"`
@@ -53,7 +52,6 @@ func (p *KineticpanelProvider) Schema(_ context.Context, _ provider.SchemaReques
 func (p *KineticpanelProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	var config kineticpanelProviderModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -66,12 +64,8 @@ func (p *KineticpanelProvider) Configure(ctx context.Context, req provider.Confi
 		host = "https://kineticpanel.net"
 	}
 
-	// Warning for non-standard hosts
 	if config.Host.ValueString() != "" && !strings.EqualFold(strings.TrimRight(config.Host.ValueString(), "/"), "https://kineticpanel.net") {
-		resp.Diagnostics.AddWarning(
-			"Non-standard host",
-			"This provider is optimized for https://kineticpanel.net. Other Pterodactyl instances may have compatibility issues.",
-		)
+		resp.Diagnostics.AddWarning("Non-standard host", "This provider is optimized for https://kineticpanel.net. Other instances may have compatibility issues.")
 	}
 
 	apiKey := config.APIKey.ValueString()
@@ -85,11 +79,13 @@ func (p *KineticpanelProvider) Configure(ctx context.Context, req provider.Confi
 	}
 
 	if apiKey == "" {
-		resp.Diagnostics.AddError("Missing configuration", "host and api_key are required")
+		resp.Diagnostics.AddError("Missing configuration", "api_key is required")
 		return
 	}
 
 	client := NewClient(host, apiKey, useApp)
+	tflog.Info(ctx, "Provider configured", map[string]any{"host": host, "use_application": useApp})
+
 	resp.DataSourceData = client
 	resp.ResourceData = client
 }
@@ -108,6 +104,7 @@ func (p *KineticpanelProvider) Resources(_ context.Context) []func() resource.Re
 
 func (p *KineticpanelProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		NewServersDataSource,
 		NewServerDataSource,
 		NewServerUtilizationDataSource,
 		NewServerStartupDataSource,
@@ -116,7 +113,5 @@ func (p *KineticpanelProvider) DataSources(_ context.Context) []func() datasourc
 }
 
 func New(version string) func() provider.Provider {
-	return func() provider.Provider {
-		return &KineticpanelProvider{version: version}
-	}
+	return func() provider.Provider { return &KineticpanelProvider{version: version} }
 }

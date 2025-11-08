@@ -2,12 +2,15 @@ package provider
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type Client struct {
@@ -23,7 +26,6 @@ func NewClient(host, apiKey string, isApplication bool) *Client {
 	} else {
 		base += "/api/client"
 	}
-
 	return &Client{
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 		BaseURL:    base,
@@ -51,50 +53,24 @@ func (c *Client) request(method, path string, body io.Reader) ([]byte, error) {
 	defer resp.Body.Close()
 
 	bodyBytes, _ := io.ReadAll(resp.Body)
-
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("API error %d: %s", resp.StatusCode, string(bodyBytes))
+		errMsg := fmt.Sprintf("API error %d: %s", resp.StatusCode, string(bodyBytes))
+		tflog.Error(context.Background(), errMsg)
+		return nil, fmt.Errorf(errMsg)
 	}
-
 	return bodyBytes, nil
 }
 
-func (c *Client) Get(path string) ([]byte, error) {
-	return c.request("GET", path, nil)
-}
-
+func (c *Client) Get(path string) ([]byte, error) { return c.request("GET", path, nil) }
 func (c *Client) Post(path string, payload any) ([]byte, error) {
-	var body io.Reader
-	if payload != nil {
-		jsonData, err := json.Marshal(payload)
-		if err != nil {
-			return nil, err
-		}
-		body = bytes.NewBuffer(jsonData)
+	if payload == nil {
+		return c.request("POST", path, nil)
 	}
-	return c.request("POST", path, body)
-}
-
-func (c *Client) Put(path string, payload any) ([]byte, error) {
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-	return c.request("PUT", path, bytes.NewBuffer(jsonData))
+	data, _ := json.Marshal(payload)
+	return c.request("POST", path, bytes.NewBuffer(data))
 }
 func (c *Client) Patch(path string, payload any) ([]byte, error) {
-	var body io.Reader
-	if payload != nil {
-		jsonData, err := json.Marshal(payload)
-		if err != nil {
-			return nil, err
-		}
-		body = bytes.NewBuffer(jsonData)
-	}
-	return c.request("PATCH", path, body)
+	data, _ := json.Marshal(payload)
+	return c.request("PATCH", path, bytes.NewBuffer(data))
 }
-
-func (c *Client) Delete(path string) error {
-	_, err := c.request("DELETE", path, nil)
-	return err
-}
+func (c *Client) Delete(path string) error { _, err := c.request("DELETE", path, nil); return err }

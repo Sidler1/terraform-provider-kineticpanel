@@ -13,11 +13,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var _ resource.Resource = &ServerResource{}
 
-// serverAPIResponse matches the exact JSON structure returned by KineticPanel API
 type serverAPIResponse struct {
 	Object     string `json:"object"`
 	Attributes struct {
@@ -53,9 +53,7 @@ type serverModel struct {
 	StartupCmd  types.String `tfsdk:"startup_command"`
 }
 
-func NewServerResource() resource.Resource {
-	return &ServerResource{}
-}
+func NewServerResource() resource.Resource { return &ServerResource{} }
 
 func (r *ServerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_server"
@@ -75,51 +73,18 @@ func (r *ServerResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
-			"name": schema.StringAttribute{
-				Required: true,
-			},
-			"user_id": schema.Int64Attribute{
-				Required: true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.RequiresReplace(),
-				},
-			},
-			"egg_id": schema.Int64Attribute{
-				Required: true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.RequiresReplace(),
-				},
-			},
-			"location_id": schema.Int64Attribute{
-				Required: true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.RequiresReplace(),
-				},
-			},
-			"node_id": schema.Int64Attribute{
-				Required: true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.RequiresReplace(),
-				},
-			},
-			"memory": schema.Int64Attribute{
-				Required: true,
-			},
-			"disk": schema.Int64Attribute{
-				Required: true,
-			},
-			"cpu": schema.Int64Attribute{
-				Required: true,
-			},
-			"docker_image": schema.StringAttribute{
-				Required: true,
-			},
-			"startup_command": schema.StringAttribute{
-				Required: true,
-			},
+			"name":            schema.StringAttribute{Required: true},
+			"user_id":         schema.Int64Attribute{Required: true, PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplace()}},
+			"egg_id":          schema.Int64Attribute{Required: true, PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplace()}},
+			"location_id":     schema.Int64Attribute{Required: true, PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplace()}},
+			"node_id":         schema.Int64Attribute{Required: true, PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplace()}},
+			"memory":          schema.Int64Attribute{Required: true},
+			"disk":            schema.Int64Attribute{Required: true},
+			"cpu":             schema.Int64Attribute{Required: true},
+			"docker_image":    schema.StringAttribute{Required: true},
+			"startup_command": schema.StringAttribute{Required: true},
 		},
 	}
-
 }
 
 func (r *ServerResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -128,16 +93,12 @@ func (r *ServerResource) Configure(ctx context.Context, req resource.ConfigureRe
 	}
 	client, ok := req.ProviderData.(*Client)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *Client, got: %T", req.ProviderData),
-		)
+		resp.Diagnostics.AddError("Unexpected Resource Configure Type", fmt.Sprintf("Expected *Client, got: %T", req.ProviderData))
 		return
 	}
 	r.client = client
 }
 
-// helper: convert model → API payload
 func modelToPayload(plan serverModel) map[string]any {
 	return map[string]any{
 		"name":         plan.Name.ValueString(),
@@ -153,7 +114,6 @@ func modelToPayload(plan serverModel) map[string]any {
 	}
 }
 
-// helper: API response → model
 func apiToModel(apiResp serverAPIResponse) serverModel {
 	a := apiResp.Attributes
 	return serverModel{
@@ -178,6 +138,7 @@ func (r *ServerResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	tflog.Info(ctx, "Creating server", map[string]any{"name": plan.Name.ValueString()})
 	body, err := r.client.Post("/servers", modelToPayload(plan))
 	if err != nil {
 		resp.Diagnostics.AddError("API Create Error", err.Error())
@@ -185,8 +146,7 @@ func (r *ServerResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	var apiResp serverAPIResponse
-	err = json.Unmarshal(body, &apiResp)
-	if err != nil {
+	if err := json.Unmarshal(body, &apiResp); err != nil {
 		resp.Diagnostics.AddError("JSON Parse Error", err.Error())
 		return
 	}
@@ -213,8 +173,7 @@ func (r *ServerResource) Read(ctx context.Context, req resource.ReadRequest, res
 	}
 
 	var apiResp serverAPIResponse
-	err = json.Unmarshal(body, &apiResp)
-	if err != nil {
+	if err := json.Unmarshal(body, &apiResp); err != nil {
 		resp.Diagnostics.AddError("JSON Parse Error", err.Error())
 		return
 	}
@@ -236,13 +195,9 @@ func (r *ServerResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	// Refresh state from API after update
-	readReq := resource.ReadRequest{
-		State: req.State, // use pre-update state (contains known ID)
-	}
+	readReq := resource.ReadRequest{State: req.State}
 	var readResp resource.ReadResponse
 	r.Read(ctx, readReq, &readResp)
-
 	resp.Diagnostics.Append(readResp.Diagnostics...)
 	resp.State = readResp.State
 }
