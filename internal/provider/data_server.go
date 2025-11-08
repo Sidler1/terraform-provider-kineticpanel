@@ -52,36 +52,114 @@ func (d *ServerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 	resp.Schema = schema.Schema{
 		Description: "Fetches a single server from Kinetic Panel (Client API).",
 		Attributes: map[string]schema.Attribute{
-			"server_id":       schema.StringAttribute{Required: true},
-			"id":              schema.StringAttribute{Computed: true},
-			"identifier":      schema.StringAttribute{Computed: true},
-			"internal_id":     schema.Int64Attribute{Computed: true},
-			"name":            schema.StringAttribute{Computed: true},
-			"description":     schema.StringAttribute{Computed: true},
-			"is_suspended":    schema.BoolAttribute{Computed: true},
-			"is_installing":   schema.BoolAttribute{Computed: true},
-			"is_transferring": schema.BoolAttribute{Computed: true},
-			"node":            schema.StringAttribute{Computed: true},
-			"sftp_ip":         schema.StringAttribute{Computed: true},
-			"sftp_port":       schema.Int64Attribute{Computed: true},
-			"invocation":      schema.StringAttribute{Computed: true},
-			"docker_image":    schema.StringAttribute{Computed: true},
-			"memory":          schema.Int64Attribute{Computed: true},
-			"disk":            schema.Int64Attribute{Computed: true},
-			"cpu":             schema.Int64Attribute{Computed: true},
-			"swap":            schema.Int64Attribute{Computed: true},
-			"io":              schema.Int64Attribute{Computed: true},
-			"allocation_ip":   schema.StringAttribute{Computed: true},
-			"allocation_port": schema.Int64Attribute{Computed: true},
-			"environment":     schema.MapAttribute{ElementType: types.StringType, Computed: true},
-			"egg_features":    schema.ListAttribute{ElementType: types.StringType, Computed: true},
+			"server_id": schema.StringAttribute{
+				Required:    true,
+				Description: "Short server identifier (e.g. `19281aed`).",
+			},
+			"id": schema.StringAttribute{
+				Computed:    true,
+				Description: "Same as `identifier` (short ID).",
+			},
+			"identifier": schema.StringAttribute{
+				Computed:    true,
+				Description: "Short server identifier.",
+			},
+			"internal_id": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Internal numeric ID.",
+			},
+			"name": schema.StringAttribute{
+				Computed:    true,
+				Description: "Server name.",
+			},
+			"description": schema.StringAttribute{
+				Computed:    true,
+				Description: "Server description.",
+			},
+			"is_suspended": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether the server is suspended.",
+			},
+			"is_installing": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether the server is installing.",
+			},
+			"is_transferring": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether the server is transferring.",
+			},
+			"node": schema.StringAttribute{
+				Computed:    true,
+				Description: "Node name.",
+			},
+			"sftp_ip": schema.StringAttribute{
+				Computed:    true,
+				Description: "SFTP server IP.",
+			},
+			"sftp_port": schema.Int64Attribute{
+				Computed:    true,
+				Description: "SFTP port.",
+			},
+			"invocation": schema.StringAttribute{
+				Computed:    true,
+				Description: "Startup command.",
+			},
+			"docker_image": schema.StringAttribute{
+				Computed:    true,
+				Description: "Docker image.",
+			},
+			"memory": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Memory limit in MB.",
+			},
+			"disk": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Disk limit in MB.",
+			},
+			"cpu": schema.Int64Attribute{
+				Computed:    true,
+				Description: "CPU limit in percent.",
+			},
+			"swap": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Swap limit in MB.",
+			},
+			"io": schema.Int64Attribute{
+				Computed:    true,
+				Description: "IO priority.",
+			},
+			"allocation_ip": schema.StringAttribute{
+				Computed:    true,
+				Description: "Primary allocation IP.",
+			},
+			"allocation_port": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Primary allocation port.",
+			},
+			"environment": schema.MapAttribute{
+				ElementType: types.StringType,
+				Computed:    true,
+				Description: "Environment variables.",
+			},
+			"egg_features": schema.ListAttribute{
+				ElementType: types.StringType,
+				Computed:    true,
+				Description: "Enabled egg features.",
+			},
 			"feature_limits": schema.ObjectAttribute{
 				AttributeTypes: map[string]attr.Type{
-					"databases": types.Int64Type, "allocations": types.Int64Type, "backups": types.Int64Type,
+					"databases":   types.Int64Type,
+					"allocations": types.Int64Type,
+					"backups":     types.Int64Type,
 				},
-				Computed: true,
+				Computed:    true,
+				Description: "Feature limits.",
 			},
-			"user_permissions": schema.ListAttribute{ElementType: types.StringType, Computed: true},
+			"user_permissions": schema.ListAttribute{
+				ElementType: types.StringType,
+				Computed:    true,
+				Description: "User permissions.",
+			},
 		},
 	}
 }
