@@ -111,7 +111,6 @@ func (p *KineticpanelProvider) Resources(_ context.Context) []func() resource.Re
 
 func (p *KineticpanelProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewServersDataSource,
 		NewServerDataSource,
 		NewServerUtilizationDataSource,
 		NewServerStartupDataSource,
