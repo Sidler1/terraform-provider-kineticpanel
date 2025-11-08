@@ -44,10 +44,20 @@ type serverDataModel struct {
 
 func NewServerDataSource() datasource.DataSource { return &ServerDataSource{} }
 
+// Metadata returns the metadata for the server data source.
+// This function is called by the Terraform plugin framework to register
+// the data source with the provider.
 func (d *ServerDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_server"
 }
 
+// Schema defines the schema for the server data source.
+// This function is called by the Terraform plugin framework to get the
+// structure and attribute definitions for the data source.
+//
+// The context and request parameters are not used in this implementation,
+// but are required by the datasource.DataSource interface. The response
+// parameter is used to set the schema for the data source.
 func (d *ServerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Fetches a single server from Kinetic Panel (Client API).",
@@ -60,91 +70,32 @@ func (d *ServerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 				Computed:    true,
 				Description: "Same as `identifier` (short ID).",
 			},
-			"identifier": schema.StringAttribute{
-				Computed:    true,
-				Description: "Short server identifier.",
-			},
-			"internal_id": schema.Int64Attribute{
-				Computed:    true,
-				Description: "Internal numeric ID.",
-			},
-			"name": schema.StringAttribute{
-				Computed:    true,
-				Description: "Server name.",
-			},
-			"description": schema.StringAttribute{
-				Computed:    true,
-				Description: "Server description.",
-			},
-			"is_suspended": schema.BoolAttribute{
-				Computed:    true,
-				Description: "Whether the server is suspended.",
-			},
-			"is_installing": schema.BoolAttribute{
-				Computed:    true,
-				Description: "Whether the server is installing.",
-			},
-			"is_transferring": schema.BoolAttribute{
-				Computed:    true,
-				Description: "Whether the server is transferring.",
-			},
-			"node": schema.StringAttribute{
-				Computed:    true,
-				Description: "Node name.",
-			},
-			"sftp_ip": schema.StringAttribute{
-				Computed:    true,
-				Description: "SFTP server IP.",
-			},
-			"sftp_port": schema.Int64Attribute{
-				Computed:    true,
-				Description: "SFTP port.",
-			},
-			"invocation": schema.StringAttribute{
-				Computed:    true,
-				Description: "Startup command.",
-			},
-			"docker_image": schema.StringAttribute{
-				Computed:    true,
-				Description: "Docker image.",
-			},
-			"memory": schema.Int64Attribute{
-				Computed:    true,
-				Description: "Memory limit in MB.",
-			},
-			"disk": schema.Int64Attribute{
-				Computed:    true,
-				Description: "Disk limit in MB.",
-			},
-			"cpu": schema.Int64Attribute{
-				Computed:    true,
-				Description: "CPU limit in percent.",
-			},
-			"swap": schema.Int64Attribute{
-				Computed:    true,
-				Description: "Swap limit in MB.",
-			},
-			"io": schema.Int64Attribute{
-				Computed:    true,
-				Description: "IO priority.",
-			},
-			"allocation_ip": schema.StringAttribute{
-				Computed:    true,
-				Description: "Primary allocation IP.",
-			},
-			"allocation_port": schema.Int64Attribute{
-				Computed:    true,
-				Description: "Primary allocation port.",
-			},
+			"identifier":      schema.StringAttribute{Computed: true},
+			"internal_id":     schema.Int64Attribute{Computed: true},
+			"name":            schema.StringAttribute{Computed: true},
+			"description":     schema.StringAttribute{Computed: true},
+			"is_suspended":    schema.BoolAttribute{Computed: true},
+			"is_installing":   schema.BoolAttribute{Computed: true},
+			"is_transferring": schema.BoolAttribute{Computed: true},
+			"node":            schema.StringAttribute{Computed: true},
+			"sftp_ip":         schema.StringAttribute{Computed: true},
+			"sftp_port":       schema.Int64Attribute{Computed: true},
+			"invocation":      schema.StringAttribute{Computed: true},
+			"docker_image":    schema.StringAttribute{Computed: true},
+			"memory":          schema.Int64Attribute{Computed: true},
+			"disk":            schema.Int64Attribute{Computed: true},
+			"cpu":             schema.Int64Attribute{Computed: true},
+			"swap":            schema.Int64Attribute{Computed: true},
+			"io":              schema.Int64Attribute{Computed: true},
+			"allocation_ip":   schema.StringAttribute{Computed: true},
+			"allocation_port": schema.Int64Attribute{Computed: true},
 			"environment": schema.MapAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
-				Description: "Environment variables.",
 			},
 			"egg_features": schema.ListAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
-				Description: "Enabled egg features.",
 			},
 			"feature_limits": schema.ObjectAttribute{
 				AttributeTypes: map[string]attr.Type{
@@ -152,18 +103,26 @@ func (d *ServerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 					"allocations": types.Int64Type,
 					"backups":     types.Int64Type,
 				},
-				Computed:    true,
-				Description: "Feature limits.",
+				Computed: true,
 			},
 			"user_permissions": schema.ListAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
-				Description: "User permissions.",
 			},
 		},
 	}
 }
 
+// Configure adds the provider configured client to the data source.
+//
+// This function is called by the Terraform plugin framework to pass provider-level
+// configuration to the data source. It receives the configured client from the
+// provider and stores it in the data source instance for making API calls.
+//
+// Parameters:
+//   - ctx: The context.Context for the request, which may be cancelled. Not used in this function.
+//   - req: The datasource.ConfigureRequest containing the provider-level configuration.
+//   - resp: The datasource.ConfigureResponse to which diagnostics can be added.
 func (d *ServerDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -176,6 +135,17 @@ func (d *ServerDataSource) Configure(_ context.Context, req datasource.Configure
 	d.client = client
 }
 
+// Read fetches the server data from the API and sets the state.
+//
+// This function is called by the Terraform plugin framework when the data source
+// needs to be read. It retrieves the server ID from the configuration, makes an
+// API call to the Kinetic Panel to get the server details, and then populates
+// the Terraform state with the retrieved information.
+//
+// Parameters:
+//   - ctx: The context.Context for the request, which allows for cancellation and timeout.
+//   - req: The datasource.ReadRequest containing the configuration of the data source.
+//   - resp: The datasource.ReadResponse to which the resulting state or diagnostics are written.
 func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var config struct {
 		ServerID types.String `tfsdk:"server_id"`

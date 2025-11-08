@@ -79,8 +79,14 @@ func (d *ServersDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 						"io":              schema.Int64Attribute{Computed: true},
 						"allocation_ip":   schema.StringAttribute{Computed: true},
 						"allocation_port": schema.Int64Attribute{Computed: true},
-						"environment":     schema.MapAttribute{ElementType: types.StringType, Computed: true},
-						"egg_features":    schema.ListAttribute{ElementType: types.StringType, Computed: true},
+						"environment": schema.MapAttribute{
+							ElementType: types.StringType,
+							Computed:    true,
+						},
+						"egg_features": schema.ListAttribute{
+							ElementType: types.StringType,
+							Computed:    true,
+						},
 						"feature_limits": schema.ObjectAttribute{
 							AttributeTypes: map[string]attr.Type{
 								"databases":   types.Int64Type,
@@ -89,7 +95,10 @@ func (d *ServersDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 							},
 							Computed: true,
 						},
-						"user_permissions": schema.ListAttribute{ElementType: types.StringType, Computed: true},
+						"user_permissions": schema.ListAttribute{
+							ElementType: types.StringType,
+							Computed:    true,
+						},
 					},
 				},
 			},
