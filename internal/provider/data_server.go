@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -12,7 +13,9 @@ import (
 
 var _ datasource.DataSource = &ServerDataSource{}
 
-type ServerDataSource struct{ client *Client }
+type ServerDataSource struct {
+	client *Client
+}
 
 type serverDataModel struct {
 	ServerID        types.String `tfsdk:"server_id"`
@@ -42,110 +45,153 @@ type serverDataModel struct {
 	UserPermissions types.List   `tfsdk:"user_permissions"`
 }
 
-func NewServerDataSource() datasource.DataSource { return &ServerDataSource{} }
+func NewServerDataSource() datasource.DataSource {
+	return &ServerDataSource{}
+}
 
-// Metadata returns the metadata for the server data source.
-// This function is called by the Terraform plugin framework to register
-// the data source with the provider.
 func (d *ServerDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_server"
 }
 
-// Schema defines the schema for the server data source.
-// This function is called by the Terraform plugin framework to get the
-// structure and attribute definitions for the data source.
-//
-// The context and request parameters are not used in this implementation,
-// but are required by the datasource.DataSource interface. The response
-// parameter is used to set the schema for the data source.
 func (d *ServerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Fetches a single server from Kinetic Panel (Client API).",
 		Attributes: map[string]schema.Attribute{
 			"server_id": schema.StringAttribute{
 				Required:    true,
-				Description: "Short server identifier (e.g. `19281aed`).",
+				Description: "Short server identifier (e.g. `d3aac109`).",
 			},
 			"id": schema.StringAttribute{
 				Computed:    true,
 				Description: "Same as `identifier` (short ID).",
 			},
-			"identifier":      schema.StringAttribute{Computed: true},
-			"internal_id":     schema.Int64Attribute{Computed: true},
-			"name":            schema.StringAttribute{Computed: true},
-			"description":     schema.StringAttribute{Computed: true},
-			"is_suspended":    schema.BoolAttribute{Computed: true},
-			"is_installing":   schema.BoolAttribute{Computed: true},
-			"is_transferring": schema.BoolAttribute{Computed: true},
-			"node":            schema.StringAttribute{Computed: true},
-			"sftp_ip":         schema.StringAttribute{Computed: true},
-			"sftp_port":       schema.Int64Attribute{Computed: true},
-			"invocation":      schema.StringAttribute{Computed: true},
-			"docker_image":    schema.StringAttribute{Computed: true},
-			"memory":          schema.Int64Attribute{Computed: true},
-			"disk":            schema.Int64Attribute{Computed: true},
-			"cpu":             schema.Int64Attribute{Computed: true},
-			"swap":            schema.Int64Attribute{Computed: true},
-			"io":              schema.Int64Attribute{Computed: true},
-			"allocation_ip":   schema.StringAttribute{Computed: true},
-			"allocation_port": schema.Int64Attribute{Computed: true},
+			"identifier": schema.StringAttribute{
+				Computed:    true,
+				Description: "Short server identifier.",
+			},
+			"internal_id": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Internal numeric ID of the server.",
+			},
+			"name": schema.StringAttribute{
+				Computed:    true,
+				Description: "Server name.",
+			},
+			"description": schema.StringAttribute{
+				Computed:    true,
+				Description: "Server description.",
+			},
+			"is_suspended": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether the server is suspended.",
+			},
+			"is_installing": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether the server is installing.",
+			},
+			"is_transferring": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether the server is transferring.",
+			},
+			"node": schema.StringAttribute{
+				Computed:    true,
+				Description: "Node the server is running on.",
+			},
+			"sftp_ip": schema.StringAttribute{
+				Computed:    true,
+				Description: "SFTP IP address.",
+			},
+			"sftp_port": schema.Int64Attribute{
+				Computed:    true,
+				Description: "SFTP port.",
+			},
+			"invocation": schema.StringAttribute{
+				Computed:    true,
+				Description: "Startup command invocation.",
+			},
+			"docker_image": schema.StringAttribute{
+				Computed:    true,
+				Description: "Docker image used by the server.",
+			},
+			"memory": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Memory limit in MB.",
+			},
+			"disk": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Disk limit in MB.",
+			},
+			"cpu": schema.Int64Attribute{
+				Computed:    true,
+				Description: "CPU limit in percentage.",
+			},
+			"swap": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Swap limit in MB.",
+			},
+			"io": schema.Int64Attribute{
+				Computed:    true,
+				Description: "IO performance limit.",
+			},
+			"allocation_ip": schema.StringAttribute{
+				Computed:    true,
+				Description: "Primary allocation IP.",
+			},
+			"allocation_port": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Primary allocation port.",
+			},
 			"environment": schema.MapAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
+				Description: "Environment variables for startup.",
 			},
 			"egg_features": schema.ListAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
+				Description: "List of egg features enabled.",
 			},
-			"feature_limits": schema.ObjectAttribute{
-				AttributeTypes: map[string]attr.Type{
-					"databases":   types.Int64Type,
-					"allocations": types.Int64Type,
-					"backups":     types.Int64Type,
-				},
+			"feature_limits": schema.SingleNestedAttribute{
 				Computed: true,
+				Attributes: map[string]schema.Attribute{
+					"databases": schema.Int64Attribute{
+						Computed:    true,
+						Description: "Maximum number of databases.",
+					},
+					"allocations": schema.Int64Attribute{
+						Computed:    true,
+						Description: "Maximum number of allocations.",
+					},
+					"backups": schema.Int64Attribute{
+						Computed:    true,
+						Description: "Maximum number of backups.",
+					},
+				},
 			},
 			"user_permissions": schema.ListAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
+				Description: "List of user permissions on the server.",
 			},
 		},
 	}
 }
 
-// Configure adds the provider configured client to the data source.
-//
-// This function is called by the Terraform plugin framework to pass provider-level
-// configuration to the data source. It receives the configured client from the
-// provider and stores it in the data source instance for making API calls.
-//
-// Parameters:
-//   - ctx: The context.Context for the request, which may be cancelled. Not used in this function.
-//   - req: The datasource.ConfigureRequest containing the provider-level configuration.
-//   - resp: The datasource.ConfigureResponse to which diagnostics can be added.
 func (d *ServerDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
 	client, ok := req.ProviderData.(*Client)
 	if !ok {
-		resp.Diagnostics.AddError("Unexpected Data Source Configure Type", "")
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *Client, got: %T", req.ProviderData),
+		)
 		return
 	}
 	d.client = client
 }
 
-// Read fetches the server data from the API and sets the state.
-//
-// This function is called by the Terraform plugin framework when the data source
-// needs to be read. It retrieves the server ID from the configuration, makes an
-// API call to the Kinetic Panel to get the server details, and then populates
-// the Terraform state with the retrieved information.
-//
-// Parameters:
-//   - ctx: The context.Context for the request, which allows for cancellation and timeout.
-//   - req: The datasource.ReadRequest containing the configuration of the data source.
-//   - resp: The datasource.ReadResponse to which the resulting state or diagnostics are written.
 func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var config struct {
 		ServerID types.String `tfsdk:"server_id"`
@@ -155,10 +201,12 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 
-	path := "/servers/" + config.ServerID.ValueString()
+	serverID := config.ServerID.ValueString()
+	path := "/servers/" + serverID
+
 	body, err := d.client.Get(path)
 	if err != nil {
-		resp.Diagnostics.AddError("API Error", err.Error())
+		resp.Diagnostics.AddError("API Error", fmt.Sprintf("Failed to fetch server %s: %v", serverID, err))
 		return
 	}
 
@@ -196,7 +244,6 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 				Allocations struct {
 					Data []struct {
 						Attributes struct {
-							ID        int64  `json:"id"`
 							IP        string `json:"ip"`
 							Port      int64  `json:"port"`
 							IsDefault bool   `json:"is_default"`
@@ -221,15 +268,40 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	}
 
 	a := apiResp.Attributes
+
+	// Build environment map
 	envMap := make(map[string]attr.Value)
 	for _, v := range a.Relationships.Variables.Data {
 		envMap[v.Attributes.EnvVariable] = types.StringValue(v.Attributes.ServerValue)
 	}
-	env, _ := types.MapValue(types.StringType, envMap)
+	environment, diags := types.MapValueFrom(ctx, types.StringType, envMap)
+	resp.Diagnostics.Append(diags...)
 
-	eggFeatures, _ := types.ListValueFrom(ctx, types.StringType, a.EggFeatures)
-	userPerms, _ := types.ListValueFrom(ctx, types.StringType, a.UserPermissions)
+	// Egg features
+	eggFeatures, diags := types.ListValueFrom(ctx, types.StringType, a.EggFeatures)
+	resp.Diagnostics.Append(diags...)
 
+	// User permissions
+	userPerms, diags := types.ListValueFrom(ctx, types.StringType, a.UserPermissions)
+	resp.Diagnostics.Append(diags...)
+
+	// Feature limits
+	featureLimitsAttrs := map[string]attr.Value{
+		"databases":   types.Int64Value(a.FeatureLimits.Databases),
+		"allocations": types.Int64Value(a.FeatureLimits.Allocations),
+		"backups":     types.Int64Value(a.FeatureLimits.Backups),
+	}
+	featureLimits, diags := types.ObjectValue(
+		map[string]attr.Type{
+			"databases":   types.Int64Type,
+			"allocations": types.Int64Type,
+			"backups":     types.Int64Type,
+		},
+		featureLimitsAttrs,
+	)
+	resp.Diagnostics.Append(diags...)
+
+	// Find default allocation
 	var allocIP string
 	var allocPort int64
 	for _, alloc := range a.Relationships.Allocations.Data {
@@ -239,15 +311,6 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 			break
 		}
 	}
-
-	limits := map[string]attr.Value{
-		"databases":   types.Int64Value(a.FeatureLimits.Databases),
-		"allocations": types.Int64Value(a.FeatureLimits.Allocations),
-		"backups":     types.Int64Value(a.FeatureLimits.Backups),
-	}
-	featureLimits, _ := types.ObjectValue(map[string]attr.Type{
-		"databases": types.Int64Type, "allocations": types.Int64Type, "backups": types.Int64Type,
-	}, limits)
 
 	state := serverDataModel{
 		ServerID:        config.ServerID,
@@ -271,7 +334,7 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		IO:              types.Int64Value(a.Limits.IO),
 		AllocationIP:    types.StringValue(allocIP),
 		AllocationPort:  types.Int64Value(allocPort),
-		Environment:     env,
+		Environment:     environment,
 		EggFeatures:     eggFeatures,
 		FeatureLimits:   featureLimits,
 		UserPermissions: userPerms,
