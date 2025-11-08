@@ -63,7 +63,7 @@ func (d *ServerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			},
 			"id": schema.StringAttribute{
 				Computed:    true,
-				Description: "Same as `identifier`.",
+				Description: "Same as `identifier` (short ID).",
 			},
 			"identifier": schema.StringAttribute{
 				Computed:    true,
@@ -71,7 +71,7 @@ func (d *ServerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			},
 			"internal_id": schema.Int64Attribute{
 				Computed:    true,
-				Description: "Internal numeric ID.",
+				Description: "Internal numeric ID of the server.",
 			},
 			"name": schema.StringAttribute{
 				Computed:    true,
@@ -95,11 +95,11 @@ func (d *ServerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			},
 			"node": schema.StringAttribute{
 				Computed:    true,
-				Description: "Node name.",
+				Description: "Node the server is running on.",
 			},
 			"sftp_ip": schema.StringAttribute{
 				Computed:    true,
-				Description: "SFTP IP.",
+				Description: "SFTP IP address.",
 			},
 			"sftp_port": schema.Int64Attribute{
 				Computed:    true,
@@ -107,31 +107,31 @@ func (d *ServerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			},
 			"invocation": schema.StringAttribute{
 				Computed:    true,
-				Description: "Startup command.",
+				Description: "Startup command invocation.",
 			},
 			"docker_image": schema.StringAttribute{
 				Computed:    true,
-				Description: "Docker image.",
+				Description: "Docker image used by the server.",
 			},
 			"memory": schema.Int64Attribute{
 				Computed:    true,
-				Description: "Memory limit (MB).",
+				Description: "Memory limit in MB.",
 			},
 			"disk": schema.Int64Attribute{
 				Computed:    true,
-				Description: "Disk limit (MB).",
+				Description: "Disk limit in MB.",
 			},
 			"cpu": schema.Int64Attribute{
 				Computed:    true,
-				Description: "CPU limit (%).",
+				Description: "CPU limit in percentage.",
 			},
 			"swap": schema.Int64Attribute{
 				Computed:    true,
-				Description: "Swap limit (MB).",
+				Description: "Swap limit in MB.",
 			},
 			"io": schema.Int64Attribute{
 				Computed:    true,
-				Description: "IO limit.",
+				Description: "IO performance limit.",
 			},
 			"allocation_ip": schema.StringAttribute{
 				Computed:    true,
@@ -144,25 +144,34 @@ func (d *ServerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			"environment": schema.MapAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
-				Description: "Startup environment variables.",
+				Description: "Environment variables for startup.",
 			},
 			"egg_features": schema.ListAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
-				Description: "Enabled egg features.",
+				Description: "List of egg features enabled.",
 			},
 			"feature_limits": schema.SingleNestedAttribute{
 				Computed: true,
 				Attributes: map[string]schema.Attribute{
-					"databases":   schema.Int64Attribute{Computed: true},
-					"allocations": schema.Int64Attribute{Computed: true},
-					"backups":     schema.Int64Attribute{Computed: true},
+					"databases": schema.Int64Attribute{
+						Computed:    true,
+						Description: "Maximum number of databases.",
+					},
+					"allocations": schema.Int64Attribute{
+						Computed:    true,
+						Description: "Maximum number of allocations.",
+					},
+					"backups": schema.Int64Attribute{
+						Computed:    true,
+						Description: "Maximum number of backups.",
+					},
 				},
 			},
 			"user_permissions": schema.ListAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
-				Description: "User permissions.",
+				Description: "List of user permissions on the server.",
 			},
 		},
 	}
@@ -174,7 +183,10 @@ func (d *ServerDataSource) Configure(_ context.Context, req datasource.Configure
 	}
 	client, ok := req.ProviderData.(*Client)
 	if !ok {
-		resp.Diagnostics.AddError("Unexpected Data Source Configure Type", fmt.Sprintf("Expected *Client, got: %T", req.ProviderData))
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *Client, got: %T", req.ProviderData),
+		)
 		return
 	}
 	d.client = client
@@ -247,6 +259,9 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 				} `json:"variables"`
 			} `json:"relationships"`
 		} `json:"attributes"`
+		Meta struct {
+			UserPermissions []string `json:"user_permissions"`
+		} `json:"meta"`
 	}
 
 	if err := json.Unmarshal(body, &apiResp); err != nil {
@@ -256,22 +271,29 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	a := apiResp.Attributes
 
-	// Environment map
-	envMap := make(map[string]attr.Value)
+	// Build environment map (handle empty/null)
+	envElems := make(map[string]attr.Value)
 	for _, v := range a.Relationships.Variables.Data {
-		envMap[v.Attributes.EnvVariable] = types.StringValue(v.Attributes.ServerValue)
+		envElems[v.Attributes.EnvVariable] = types.StringValue(v.Attributes.ServerValue)
 	}
-	environment, diags := types.MapValueFrom(ctx, types.StringType, envMap)
+	environment, diags := types.MapValueFrom(ctx, types.StringType, envElems)
 	resp.Diagnostics.Append(diags...)
 
-	// Egg features (can be null)
-	var eggFeatures types.List
-	if a.EggFeatures == nil {
-		eggFeatures = types.ListNull(types.StringType)
-	} else {
-		eggFeatures, diags = types.ListValueFrom(ctx, types.StringType, a.EggFeatures)
-		resp.Diagnostics.Append(diags...)
+	// Egg features (handle null as empty)
+	eggFeaturesList := a.EggFeatures
+	if eggFeaturesList == nil {
+		eggFeaturesList = []string{}
 	}
+	eggFeatures, diags := types.ListValueFrom(ctx, types.StringType, eggFeaturesList)
+	resp.Diagnostics.Append(diags...)
+
+	// User permissions from meta (handle null as empty)
+	userPermsList := apiResp.Meta.UserPermissions
+	if userPermsList == nil {
+		userPermsList = []string{}
+	}
+	userPerms, diags := types.ListValueFrom(ctx, types.StringType, userPermsList)
+	resp.Diagnostics.Append(diags...)
 
 	// Feature limits
 	featureLimitsAttrs := map[string]attr.Value{
@@ -289,7 +311,7 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	)
 	resp.Diagnostics.Append(diags...)
 
-	// Default allocation
+	// Find default allocation (default to empty if none)
 	var allocIP string
 	var allocPort int64
 	for _, alloc := range a.Relationships.Allocations.Data {
@@ -325,7 +347,7 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		Environment:     environment,
 		EggFeatures:     eggFeatures,
 		FeatureLimits:   featureLimits,
-		UserPermissions: types.ListNull(types.StringType), // Not in response, safe to omit
+		UserPermissions: userPerms,
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
