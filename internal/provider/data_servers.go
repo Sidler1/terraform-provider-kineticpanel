@@ -163,14 +163,11 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	var apiResp struct {
 		Attributes struct {
-			Name           string `json:"name"`
-			UUID           string `json:"uuid"`
-			Description    string `json:"description"`
-			Suspended      bool   `json:"suspended"`
-			Identifier     string `json:"identifier"`
-			InternalID     int64  `json:"internal_id"`
-			StartupCommand string `json:"invocation"`
-			Limits         struct {
+			Name        string `json:"name"`
+			UUID        string `json:"uuid"`
+			Description string `json:"description"`
+			Suspended   bool   `json:"suspended"`
+			Limits      struct {
 				Memory int64 `json:"memory"`
 				Swap   int64 `json:"swap"`
 				Disk   int64 `json:"disk"`
@@ -221,9 +218,6 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		AllocationID:   types.Int64Value(a.Allocation.ID),
 		AllocationIP:   types.StringValue(a.Allocation.IP),
 		AllocationPort: types.Int64Value(a.Allocation.Port),
-		Identifier:     types.StringValue(a.Identifier),
-		InternalID:     types.Int64Value(a.InternalID),
-		StartupCommand: types.StringValue(a.StartupCommand),
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
