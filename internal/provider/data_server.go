@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var _ datasource.DataSource = &ServerDataSource{}
@@ -45,9 +46,7 @@ type serverDataModel struct {
 	UserPermissions types.List   `tfsdk:"user_permissions"`
 }
 
-func NewServerDataSource() datasource.DataSource {
-	return &ServerDataSource{}
-}
+func NewServerDataSource() datasource.DataSource { return &ServerDataSource{} }
 
 func (d *ServerDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_server"
@@ -55,123 +54,51 @@ func (d *ServerDataSource) Metadata(_ context.Context, req datasource.MetadataRe
 
 func (d *ServerDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Fetches a single server from Kinetic Panel (Client API).",
+		Description: "Fetches a single Kinetic Panel server (Client API).",
 		Attributes: map[string]schema.Attribute{
 			"server_id": schema.StringAttribute{
 				Required:    true,
 				Description: "Short server identifier (e.g. `19281aed`).",
 			},
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "Same as `identifier` (short ID).",
-			},
-			"identifier": schema.StringAttribute{
-				Computed:    true,
-				Description: "Short server identifier.",
-			},
-			"internal_id": schema.Int64Attribute{
-				Computed:    true,
-				Description: "Internal numeric ID of the server.",
-			},
-			"name": schema.StringAttribute{
-				Computed:    true,
-				Description: "Server name.",
-			},
-			"description": schema.StringAttribute{
-				Computed:    true,
-				Description: "Server description.",
-			},
-			"is_suspended": schema.BoolAttribute{
-				Computed:    true,
-				Description: "Whether the server is suspended.",
-			},
-			"is_installing": schema.BoolAttribute{
-				Computed:    true,
-				Description: "Whether the server is installing.",
-			},
-			"is_transferring": schema.BoolAttribute{
-				Computed:    true,
-				Description: "Whether the server is transferring.",
-			},
-			"node": schema.StringAttribute{
-				Computed:    true,
-				Description: "Node the server is running on.",
-			},
-			"sftp_ip": schema.StringAttribute{
-				Computed:    true,
-				Description: "SFTP IP address.",
-			},
-			"sftp_port": schema.Int64Attribute{
-				Computed:    true,
-				Description: "SFTP port.",
-			},
-			"invocation": schema.StringAttribute{
-				Computed:    true,
-				Description: "Startup command invocation.",
-			},
-			"docker_image": schema.StringAttribute{
-				Computed:    true,
-				Description: "Docker image used by the server.",
-			},
-			"memory": schema.Int64Attribute{
-				Computed:    true,
-				Description: "Memory limit in MB.",
-			},
-			"disk": schema.Int64Attribute{
-				Computed:    true,
-				Description: "Disk limit in MB.",
-			},
-			"cpu": schema.Int64Attribute{
-				Computed:    true,
-				Description: "CPU limit in percentage.",
-			},
-			"swap": schema.Int64Attribute{
-				Computed:    true,
-				Description: "Swap limit in MB.",
-			},
-			"io": schema.Int64Attribute{
-				Computed:    true,
-				Description: "IO performance limit.",
-			},
-			"allocation_ip": schema.StringAttribute{
-				Computed:    true,
-				Description: "Primary allocation IP.",
-			},
-			"allocation_port": schema.Int64Attribute{
-				Computed:    true,
-				Description: "Primary allocation port.",
-			},
+			"id":              schema.StringAttribute{Computed: true},
+			"identifier":      schema.StringAttribute{Computed: true},
+			"internal_id":     schema.Int64Attribute{Computed: true},
+			"name":            schema.StringAttribute{Computed: true},
+			"description":     schema.StringAttribute{Computed: true},
+			"is_suspended":    schema.BoolAttribute{Computed: true},
+			"is_installing":   schema.BoolAttribute{Computed: true},
+			"is_transferring": schema.BoolAttribute{Computed: true},
+			"node":            schema.StringAttribute{Computed: true},
+			"sftp_ip":         schema.StringAttribute{Computed: true},
+			"sftp_port":       schema.Int64Attribute{Computed: true},
+			"invocation":      schema.StringAttribute{Computed: true},
+			"docker_image":    schema.StringAttribute{Computed: true},
+			"memory":          schema.Int64Attribute{Computed: true},
+			"disk":            schema.Int64Attribute{Computed: true},
+			"cpu":             schema.Int64Attribute{Computed: true},
+			"swap":            schema.Int64Attribute{Computed: true},
+			"io":              schema.Int64Attribute{Computed: true},
+			"allocation_ip":   schema.StringAttribute{Computed: true},
+			"allocation_port": schema.Int64Attribute{Computed: true},
 			"environment": schema.MapAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
-				Description: "Environment variables for startup.",
 			},
 			"egg_features": schema.ListAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
-				Description: "List of egg features enabled.",
 			},
 			"feature_limits": schema.SingleNestedAttribute{
 				Computed: true,
 				Attributes: map[string]schema.Attribute{
-					"databases": schema.Int64Attribute{
-						Computed:    true,
-						Description: "Maximum number of databases.",
-					},
-					"allocations": schema.Int64Attribute{
-						Computed:    true,
-						Description: "Maximum number of allocations.",
-					},
-					"backups": schema.Int64Attribute{
-						Computed:    true,
-						Description: "Maximum number of backups.",
-					},
+					"databases":   schema.Int64Attribute{Computed: true},
+					"allocations": schema.Int64Attribute{Computed: true},
+					"backups":     schema.Int64Attribute{Computed: true},
 				},
 			},
 			"user_permissions": schema.ListAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
-				Description: "List of user permissions on the server.",
 			},
 		},
 	}
@@ -190,26 +117,33 @@ func (d *ServerDataSource) Configure(_ context.Context, req datasource.Configure
 		return
 	}
 	d.client = client
+	if DebugEnabled {
+		tflog.Info(context.Background(), "ServerDataSource configured")
+	}
 }
 
 func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config struct {
+	var cfg struct {
 		ServerID types.String `tfsdk:"server_id"`
 	}
-	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	if DebugEnabled {
+		tflog.Info(ctx, "Reading server", map[string]any{"server_id": cfg.ServerID.ValueString()})
+	}
 
-	serverID := config.ServerID.ValueString()
-	path := "/servers/" + serverID
-
+	path := "/servers/" + cfg.ServerID.ValueString()
 	body, err := d.client.Get(path)
 	if err != nil {
-		resp.Diagnostics.AddError("API Error", fmt.Sprintf("Failed to fetch server %s: %v", serverID, err))
+		resp.Diagnostics.AddError("API request failed", err.Error())
 		return
 	}
 
+	// -----------------------------------------------------------------
+	// JSON structure (matches KineticPanel / Pterodactyl client API)
+	// -----------------------------------------------------------------
 	var apiResp struct {
 		Attributes struct {
 			Identifier     string `json:"identifier"`
@@ -263,39 +197,43 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 			UserPermissions []string `json:"user_permissions"`
 		} `json:"meta"`
 	}
-
 	if err := json.Unmarshal(body, &apiResp); err != nil {
-		resp.Diagnostics.AddError("JSON Parse Error", err.Error())
+		resp.Diagnostics.AddError("JSON unmarshal failed", err.Error())
 		return
 	}
-
+	if DebugEnabled {
+		tflog.Debug(ctx, "API response parsed", map[string]any{
+			"identifier": apiResp.Attributes.Identifier,
+			"name":       apiResp.Attributes.Name,
+		})
+	}
 	a := apiResp.Attributes
 
-	// Build environment map (handle empty/null)
-	envElems := make(map[string]attr.Value)
+	// ----- environment map -------------------------------------------------
+	envMap := make(map[string]attr.Value)
 	for _, v := range a.Relationships.Variables.Data {
-		envElems[v.Attributes.EnvVariable] = types.StringValue(v.Attributes.ServerValue)
+		envMap[v.Attributes.EnvVariable] = types.StringValue(v.Attributes.ServerValue)
 	}
-	environment, diags := types.MapValueFrom(ctx, types.StringType, envElems)
+	environment, diags := types.MapValueFrom(ctx, types.StringType, envMap)
 	resp.Diagnostics.Append(diags...)
 
-	// Egg features (handle null as empty)
-	eggFeaturesList := a.EggFeatures
-	if eggFeaturesList == nil {
-		eggFeaturesList = []string{}
+	// ----- egg features (may be null) ------------------------------------
+	eggList := a.EggFeatures
+	if eggList == nil {
+		eggList = []string{}
 	}
-	eggFeatures, diags := types.ListValueFrom(ctx, types.StringType, eggFeaturesList)
+	eggFeatures, diags := types.ListValueFrom(ctx, types.StringType, eggList)
 	resp.Diagnostics.Append(diags...)
 
-	// User permissions from meta (handle null as empty)
-	userPermsList := apiResp.Meta.UserPermissions
-	if userPermsList == nil {
-		userPermsList = []string{}
+	// ----- user permissions (from meta) ---------------------------------
+	userPerms := apiResp.Meta.UserPermissions
+	if userPerms == nil {
+		userPerms = []string{}
 	}
-	userPerms, diags := types.ListValueFrom(ctx, types.StringType, userPermsList)
+	userPermsList, diags := types.ListValueFrom(ctx, types.StringType, userPerms)
 	resp.Diagnostics.Append(diags...)
 
-	// Feature limits
+	// ----- feature limits -------------------------------------------------
 	featureLimitsAttrs := map[string]attr.Value{
 		"databases":   types.Int64Value(a.FeatureLimits.Databases),
 		"allocations": types.Int64Value(a.FeatureLimits.Allocations),
@@ -311,7 +249,7 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	)
 	resp.Diagnostics.Append(diags...)
 
-	// Find default allocation (default to empty if none)
+	// ----- default allocation --------------------------------------------
 	var allocIP string
 	var allocPort int64
 	for _, alloc := range a.Relationships.Allocations.Data {
@@ -323,7 +261,7 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	}
 
 	state := serverDataModel{
-		ServerID:        config.ServerID,
+		ServerID:        cfg.ServerID,
 		ID:              types.StringValue(a.Identifier),
 		Identifier:      types.StringValue(a.Identifier),
 		InternalID:      types.Int64Value(a.InternalID),
@@ -347,8 +285,7 @@ func (d *ServerDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		Environment:     environment,
 		EggFeatures:     eggFeatures,
 		FeatureLimits:   featureLimits,
-		UserPermissions: userPerms,
+		UserPermissions: userPermsList,
 	}
-
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

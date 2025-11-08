@@ -87,7 +87,7 @@ func (r *ServerResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 	}
 }
 
-func (r *ServerResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *ServerResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}

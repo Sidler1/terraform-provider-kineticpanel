@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -21,6 +22,12 @@ type kineticpanelProviderModel struct {
 	Host           types.String `tfsdk:"host"`
 	APIKey         types.String `tfsdk:"api_key"`
 	UseApplication types.Bool   `tfsdk:"use_application"`
+}
+
+func init() {
+	if strings.EqualFold(os.Getenv("KINETICPANEL_DEBUG"), "true") {
+		tflog.WithLevel(hclog.Debug)
+	}
 }
 
 func (p *KineticpanelProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {

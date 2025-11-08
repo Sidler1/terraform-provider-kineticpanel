@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -19,6 +20,8 @@ type Client struct {
 	APIKey     string
 }
 
+var DebugEnabled = strings.EqualFold(os.Getenv("KINETICPANEL_DEBUG"), "true")
+
 func NewClient(host, apiKey string, isApplication bool) *Client {
 	base := strings.TrimRight(host, "/")
 	if isApplication {
@@ -26,11 +29,18 @@ func NewClient(host, apiKey string, isApplication bool) *Client {
 	} else {
 		base += "/api/client"
 	}
-	return &Client{
+	c := &Client{
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 		BaseURL:    base,
 		APIKey:     apiKey,
 	}
+	if DebugEnabled {
+		tflog.Info(context.Background(), "Client created", map[string]any{
+			"base_url":        c.BaseURL,
+			"application_api": isApplication,
+		})
+	}
+	return c
 }
 
 func (c *Client) request(method, path string, body io.Reader) ([]byte, error) {
@@ -46,19 +56,43 @@ func (c *Client) request(method, path string, body io.Reader) ([]byte, error) {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
+	if DebugEnabled {
+		tflog.Debug(context.Background(), "HTTP request", map[string]any{
+			"method": method,
+			"url":    url,
+			"headers": map[string]string{
+				"Authorization": "Bearer ***",
+				"Accept":        req.Header.Get("Accept"),
+				"Content-Type":  req.Header.Get("Content-Type"),
+			},
+		})
+		if body != nil {
+			if b, ok := body.(*bytes.Buffer); ok {
+				tflog.Debug(context.Background(), "Request payload", map[string]any{"body": b.String()})
+			}
+		}
+	}
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	bodyBytes, _ := io.ReadAll(resp.Body)
+	respBody, _ := io.ReadAll(resp.Body)
+	if DebugEnabled {
+		tflog.Debug(context.Background(), "HTTP response", map[string]any{
+			"status": resp.Status,
+			"body":   string(respBody),
+		})
+	}
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		errMsg := fmt.Sprintf("API error %d: %s", resp.StatusCode, string(bodyBytes))
+		errMsg := fmt.Sprintf("API error %d: %s", resp.StatusCode, string(respBody))
 		tflog.Error(context.Background(), errMsg)
 		return nil, fmt.Errorf(errMsg)
 	}
-	return bodyBytes, nil
+	return respBody, nil
 }
 
 func (c *Client) Get(path string) ([]byte, error) { return c.request("GET", path, nil) }
